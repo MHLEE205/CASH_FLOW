@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LEENAI 現金予定表 v1.0</title>
+<style>
+  :root {
+    --bg:      #0f1117;
+    --bg2:     #1a1d27;
+    --bg3:     #242736;
+    --border:  #2e3247;
+    --accent:  #4f8ef7;
+    --accent2: #7c5cf7;
+    --ok:      #2dd4a0;
+    --warn:    #f7a84f;
+    --err:     #f75f5f;
+    --text:    #e8eaf0;
+    --text2:   #9aa0b8;
+    --text3:   #565c78;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, #1a1d27 0%, #242736 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; font-size: 11px; font-weight: 700;
+    padding: 4px 10px; border-radius: 6px; letter-spacing: 1px;
+  }
+  .title { font-size: 15px; font-weight: 600; color: var(--text); }
+  .version-badge {
+    background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text3); font-size: 10px; padding: 2px 8px; border-radius: 20px;
+  }
+  .powered { font-size: 10px; color: var(--text3); margin-top: 2px; }
+  .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .auth-pill {
+    display: flex; align-items: center; gap: 5px;
+    background: var(--bg3); border: 1px solid var(--border);
+    padding: 4px 10px; border-radius: 20px; font-size: 11px; color: var(--text2);
+  }
+  .auth-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); }
+  .auth-pill.ok .dot  { background: var(--ok); }
+  .auth-pill.err .dot { background: var(--err); }
+  .logout-btn {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text3); padding: 4px 10px; border-radius: 6px;
+    font-size: 11px; cursor: pointer;
+  }
+  .logout-btn:hover { color: var(--err); border-color: var(--err); }
+
+  /* ── Container ── */
+  .container { max-width: 1200px; margin: 0 auto; padding: 28px 20px; }
+
+  /* ── Card ── */
+  .card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px; margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 12px; font-weight: 700; color: var(--text2);
+    letter-spacing: 1px; text-transform: uppercase;
+    margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+  }
+  .step-badge {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; font-size: 10px; font-weight: 700;
+    padding: 2px 8px; border-radius: 20px;
+  }
+
+  /* ── Button ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 20px; border-radius: 8px; border: none;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
+  .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-ok   { background: var(--ok); color: #0f1117; }
+  .btn-ok:hover { opacity: 0.85; }
+  .btn-sm   { padding: 6px 14px; font-size: 12px; }
+  .btn-warn { background: var(--warn); color: #0f1117; }
+
+  /* ── Input ── */
+  input[type="text"], input[type="password"] {
+    background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text); padding: 9px 14px; border-radius: 8px;
+    font-size: 13px; outline: none; transition: border-color 0.2s; width: 100%;
+  }
+  input[type="text"]:focus, input[type="password"]:focus { border-color: var(--accent); }
+  .input-group { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+  textarea {
+    background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text2); padding: 10px 14px; border-radius: 8px;
+    font-size: 12px; font-family: 'Consolas', 'Monaco', monospace;
+    outline: none; width: 100%; resize: vertical;
+    border-left: 3px solid var(--accent);
+  }
+
+  /* ── Alert ── */
+  .alert {
+    padding: 12px 16px; border-radius: 8px; font-size: 13px;
+    margin-bottom: 14px; display: flex; align-items: flex-start; gap: 10px;
+  }
+  .alert-warn  { background: rgba(247,168,79,0.12); border: 1px solid rgba(247,168,79,0.3); color: var(--warn); }
+  .alert-err   { background: rgba(247,95,95,0.12);  border: 1px solid rgba(247,95,95,0.3);  color: var(--err); }
+  .alert-info  { background: rgba(79,142,247,0.10); border: 1px solid rgba(79,142,247,0.3); color: var(--accent); }
+  .alert-ok    { background: rgba(45,212,160,0.10); border: 1px solid rgba(45,212,160,0.3); color: var(--ok); }
+
+  /* ── Setup Screen ── */
+  .setup-wrap {
+    max-width: 700px; margin: 60px auto 0;
+  }
+  .setup-hero {
+    text-align: center; margin-bottom: 36px;
+  }
+  .setup-hero h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  .setup-hero p  { font-size: 13px; color: var(--text2); line-height: 1.6; }
+  .auth-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  @media (max-width: 600px) { .auth-grid { grid-template-columns: 1fr; } }
+  .auth-status-card {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px 18px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .auth-status-card.active { border-color: var(--ok); }
+  .auth-icon { font-size: 24px; }
+  .auth-label { font-size: 12px; color: var(--text2); }
+  .auth-status { font-size: 13px; font-weight: 600; }
+  .auth-status.ok  { color: var(--ok); }
+  .auth-status.err { color: var(--text3); }
+
+  /* ── Summary Cards ── */
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 900px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 500px) { .summary-grid { grid-template-columns: 1fr; } }
+  .summary-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px 18px;
+  }
+  .summary-card .label { font-size: 11px; color: var(--text3); margin-bottom: 6px; letter-spacing: 0.5px; }
+  .summary-card .value { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .summary-card .sub   { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .val-ok   { color: var(--ok); }
+  .val-warn { color: var(--warn); }
+  .val-err  { color: var(--err); }
+  .val-acc  { color: var(--accent); }
+
+  /* ── Controls ── */
+  .controls {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .period-tabs {
+    display: flex; background: var(--bg3); border-radius: 8px;
+    border: 1px solid var(--border); overflow: hidden;
+  }
+  .period-tab {
+    padding: 7px 16px; font-size: 12px; cursor: pointer; border: none;
+    background: transparent; color: var(--text2); transition: all 0.15s;
+  }
+  .period-tab.active { background: var(--accent); color: #fff; }
+  .period-tab:hover:not(.active) { color: var(--text); }
+  .toggle-wrap { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); cursor: pointer; }
+  .toggle { width: 36px; height: 20px; background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; position: relative; cursor: pointer; transition: background 0.2s; }
+  .toggle.on { background: var(--ok); border-color: var(--ok); }
+  .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left 0.2s; }
+  .toggle.on::after { left: 18px; }
+  .controls-right { margin-left: auto; }
+
+  /* ── Cash Flow Table ── */
+  .cf-table-wrap { overflow-x: auto; }
+  .cf-table {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+  }
+  .cf-table th {
+    background: var(--bg3); color: var(--text2); font-size: 11px;
+    font-weight: 600; padding: 9px 12px; text-align: left;
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+    letter-spacing: 0.5px;
+  }
+  .cf-table th.right, .cf-table td.right { text-align: right; }
+  .cf-table td {
+    padding: 9px 12px; border-bottom: 1px solid rgba(46,50,71,0.5);
+    vertical-align: middle; white-space: nowrap;
+  }
+
+  /* Group header row */
+  .row-group-header {
+    background: var(--bg3); cursor: pointer; user-select: none;
+  }
+  .row-group-header:hover { background: #2a2e40; }
+  .row-group-header td { padding: 10px 12px; font-weight: 700; color: var(--text); }
+  .chevron { display: inline-block; transition: transform 0.2s; margin-right: 6px; color: var(--text3); font-size: 11px; }
+  .chevron.open { transform: rotate(90deg); }
+
+  /* Detail rows */
+  .row-detail { background: var(--bg); }
+  .row-detail:hover { background: rgba(79,142,247,0.04); }
+  .row-detail td:first-child { padding-left: 32px; }
+  .row-detail.hidden { display: none; }
+
+  /* Special rows */
+  .row-opening { background: rgba(79,142,247,0.08); }
+  .row-opening td { color: var(--accent); font-weight: 600; }
+  .row-closing { background: rgba(45,212,160,0.06); }
+  .row-closing td { color: var(--ok); font-weight: 700; border-top: 1px solid rgba(45,212,160,0.2); }
+
+  /* Status badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    white-space: nowrap;
+  }
+  .badge-paid    { background: rgba(86,92,120,0.3); color: var(--text3); }
+  .badge-plan    { background: rgba(79,142,247,0.15); color: var(--accent); }
+  .badge-overdue { background: rgba(247,95,95,0.15); color: var(--err); }
+  .badge-expense { background: rgba(247,168,79,0.12); color: var(--warn); }
+  .badge-freee   { background: rgba(45,212,160,0.12); color: var(--ok); }
+
+  /* Amount cells */
+  .amt-plus  { color: var(--ok);   }
+  .amt-minus { color: var(--warn); }
+  .amt-bal   { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .amt-bal.neg { color: var(--err); }
+
+  .text-muted  { color: var(--text3); }
+  .text-small  { font-size: 11px; }
+  .font-mono   { font-family: 'Consolas', 'Monaco', monospace; }
+
+  /* ── Loading ── */
+  .loading-overlay {
+    position: fixed; inset: 0; background: rgba(15,17,23,0.8);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 200; gap: 16px;
+  }
+  .spinner {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { color: var(--text2); font-size: 13px; }
+
+  /* ── Divider ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center; padding: 24px 20px;
+    color: var(--text3); font-size: 11px; border-top: 1px solid var(--border);
+  }
+
+  /* ── Misc ── */
+  .empty-state {
+    text-align: center; padding: 48px 20px; color: var(--text3);
+  }
+  .empty-state .icon { font-size: 32px; margin-bottom: 12px; }
+  .empty-state p { font-size: 13px; }
+  pre {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 12px 14px; border-radius: 6px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px; color: var(--ok); overflow-x: auto;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .hidden { display: none !important; }
+  .mb8  { margin-bottom: 8px; }
+  .mb14 { margin-bottom: 14px; }
+  .mt12 { margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<div class="header">
+  <div class="header-left">
+    <span class="logo">LEENAI</span>
+    <div>
+      <div class="title">📅 現金予定表</div>
+      <div class="powered">✦ Powered by LEENAI Automation System</div>
+    </div>
+    <span class="version-badge">v1.0</span>
+  </div>
+  <div class="header-right">
+    <div class="auth-pill" id="pillDv">
+      <span class="dot"></span>
+      <span id="pillDvText">COMPASS: 未認証</span>
+    </div>
+    <div class="auth-pill" id="pillFreee">
+      <span class="dot"></span>
+      <span id="pillFreeeText">freee: 未設定</span>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">🚪 ログアウト</button>
+  </div>
+</div>
+
+<!-- ═══════════════ LOADING OVERLAY ═══════════════ -->
+<div class="loading-overlay hidden" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">データ読込中...</div>
+</div>
+
+<!-- ═══════════════ SETUP SCREEN ═══════════════ -->
+<div id="setupScreen" class="container">
+  <div class="setup-wrap">
+    <div class="setup-hero">
+      <h2>📅 現金予定表</h2>
+      <p>COMPASS（売上・仕入）と freee（口座残高・経費）を統合し、<br>資金の入出金予定をリアルタイムで可視化します。</p>
+    </div>
+
+    <!-- localhost warning -->
+    <div class="alert alert-warn hidden" id="localhostWarning">
+      ⚠️ <strong>ローカル環境では COMPASS (Dataverse) 認証が使用できません。</strong><br>
+      <span style="font-size:12px">このツールは GitHub Pages (<code>https://mhlee205.github.io/CASH_FLOW/</code>) へデプロイ後にお使いください。<br>
+      freee の残高照会のみでよければそのまま続行できます。</span>
+    </div>
+
+    <!-- Auth Status -->
+    <div class="auth-grid">
+      <div class="auth-status-card" id="dvStatusCard">
+        <span class="auth-icon">🏢</span>
+        <div>
+          <div class="auth-label">COMPASS / Dataverse</div>
+          <div class="auth-status err" id="dvStatusText">未認証</div>
+        </div>
+      </div>
+      <div class="auth-status-card" id="freeeStatusCard">
+        <span class="auth-icon">💹</span>
+        <div>
+          <div class="auth-label">freee</div>
+          <div class="auth-status err" id="freeeStatusText">トークン未設定</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 1: COMPASS Auth -->
+    <div class="card" id="dvAuthCard">
+      <div class="card-title"><span class="step-badge">STEP 1</span> COMPASS ログイン (Dataverse)</div>
+      <p style="font-size:13px; color:var(--text2); margin-bottom:14px; line-height:1.6">
+        Microsoft アカウント (<code>rpa@leenearcorp.com</code> または <code>mh_lee@leenearcorp.com</code>) でログインし、売上・仕入データを取得します。
+      </p>
+      <button class="btn btn-primary" onclick="startDvLogin()" id="dvLoginBtn">
+        🔑 COMPASS にログイン
+      </button>
+      <p class="mt12 text-small text-muted">※ ログインボタンをクリックすると Microsoft 認証ページに移動します。認証後、自動的にこの画面に戻ります。</p>
+    </div>
+
+    <!-- STEP 2: freee Token -->
+    <div class="card" id="freeeAuthCard">
+      <div class="card-title"><span class="step-badge">STEP 2</span> freee アクセストークン設定</div>
+      <p style="font-size:13px; color:var(--text2); margin-bottom:14px; line-height:1.6">
+        ブラウザの制限により、freee トークン取得には curl コマンドを使用します。
+      </p>
+
+      <!-- 1. Auth URL Button -->
+      <div class="mb14">
+        <button class="btn btn-secondary btn-sm" onclick="openFreeeAuth()">① freee 認証ページを開く</button>
+        <span style="margin-left:10px; font-size:12px; color:var(--text2)">→ ログイン後、認可コードが表示されます</span>
+      </div>
+
+      <!-- 2. curl command -->
+      <div class="mb14">
+        <div style="font-size:12px; color:var(--text2); margin-bottom:6px">② 認可コードを入力 → curl コマンドをコピーして実行</div>
+        <div class="input-group mb8">
+          <input type="text" id="freeeCodeInput" placeholder="認可コード (authorization_code)" style="max-width:360px">
+          <button class="btn btn-secondary btn-sm" onclick="genCurlCommand()">curl 生成</button>
+        </div>
+        <textarea id="curlOutput" rows="5" placeholder="ここに curl コマンドが表示されます..." readonly></textarea>
+      </div>
+
+      <!-- 3. Token input -->
+      <div>
+        <div style="font-size:12px; color:var(--text2); margin-bottom:6px">③ curl 実行後の access_token を貼り付け</div>
+        <div class="input-group">
+          <input type="password" id="freeeTokenInput" placeholder="access_token をここに貼り付け" style="max-width:400px">
+          <button class="btn btn-ok btn-sm" onclick="setFreeeToken()">✅ 設定</button>
+        </div>
+      </div>
+
+      <p class="mt12 text-small text-muted">
+        💡 すでに freee Console でトークンを取得済みの場合は、自動的に引き継がれます。
+      </p>
+    </div>
+
+    <!-- Start Button -->
+    <div style="text-align:center; margin-top:10px">
+      <button class="btn btn-primary" onclick="loadAllData()" id="startBtn" disabled style="padding:12px 32px; font-size:14px">
+        📊 データ読込・現金予定表を表示
+      </button>
+      <p class="mt12 text-small text-muted">※ 両方の認証が完了すると有効になります</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MAIN SCREEN ═══════════════ -->
+<div id="mainScreen" class="container hidden">
+
+  <!-- Controls Row -->
+  <div class="controls">
+    <div class="period-tabs">
+      <button class="period-tab active" data-p="month"   onclick="changePeriod('month')">当月</button>
+      <button class="period-tab"        data-p="3months" onclick="changePeriod('3months')">3ヶ月</button>
+      <button class="period-tab"        data-p="6months" onclick="changePeriod('6months')">6ヶ月</button>
+    </div>
+    <label class="toggle-wrap" onclick="togglePaid()">
+      <div class="toggle" id="paidToggle"></div>
+      <span id="paidLabel">入金済み 非表示</span>
+    </label>
+    <div class="controls-right">
+      <button class="btn btn-secondary btn-sm" onclick="loadAllData()">🔄 更新</button>
+      <button class="btn btn-secondary btn-sm" onclick="showSetup()" style="margin-left:6px">⚙️ 認証設定</button>
+    </div>
+  </div>
+
+  <!-- Alert area -->
+  <div id="mainAlert"></div>
+
+  <!-- Summary Cards -->
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="label">🏦 期首残高（freee）</div>
+      <div class="value val-acc" id="sumBalance">—</div>
+      <div class="sub" id="sumBalanceSub">freee 口座合計</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">⬆️ 入金予定合計</div>
+      <div class="value val-ok" id="sumInflow">—</div>
+      <div class="sub" id="sumInflowSub">件数: —</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">⬇️ 支払予定合計</div>
+      <div class="value val-warn" id="sumOutflow">—</div>
+      <div class="sub" id="sumOutflowSub">件数: —</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">📊 月末予想残高</div>
+      <div class="value" id="sumFinal">—</div>
+      <div class="sub" id="sumFinalSub">期首 ＋ 入金 － 支払</div>
+    </div>
+  </div>
+
+  <!-- Data quality alert -->
+  <div class="alert alert-warn" id="dataQualityAlert" style="display:none">
+    ⚠️ <strong>データ精度について：</strong> 表示されている金額は COMPASS・freee の登録状況に依存します。
+    各行を展開して詳細を必ずご確認ください。未登録・金額相違の可能性があります。
+  </div>
+
+  <!-- Cash Flow Table -->
+  <div class="card" style="padding:16px">
+    <div class="card-title" style="margin-bottom:12px">
+      💴 現金予定表
+      <span id="periodLabel" style="font-weight:400; color:var(--text3); font-size:11px; text-transform:none; letter-spacing:0"></span>
+    </div>
+    <div class="cf-table-wrap">
+      <table class="cf-table" id="cfTable">
+        <thead>
+          <tr>
+            <th style="width:110px">日付</th>
+            <th>状態</th>
+            <th>内容</th>
+            <th>取引先</th>
+            <th class="right">USD</th>
+            <th class="right">JPY</th>
+            <th class="right">残高累計</th>
+          </tr>
+        </thead>
+        <tbody id="cfTableBody">
+          <tr><td colspan="7" class="empty-state"><div class="icon">📭</div><p>データを読み込んでください</p></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════ FOOTER ═══════════════ -->
+<div class="footer">
+  ✦ Powered by LEENAI Automation System &nbsp;|&nbsp; LEENEAR CORPORATION &nbsp;|&nbsp; 現金予定表 v1.0
+</div>
+
+<!-- ═══════════════ JAVASCRIPT ═══════════════ -->
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════
+// 定数
+// ═══════════════════════════════════════════════
+const CLIENT_ID    = 'f071a165-5e9b-44bf-b6a1-baba654524db';
+const TENANT_ID    = 'a56988ff-c2b8-4df8-9727-889ad4205198';
+const REDIRECT_URI = 'https://mhlee205.github.io/CASH_FLOW/';
+const DV_URL       = 'https://orgde512c6f.crm7.dynamics.com';
+const SCOPE_DV     = `${DV_URL}/user_impersonation openid profile`;
+const FREEE_API    = 'https://api.freee.co.jp/api/1';
+const FREEE_CLIENT_ID     = '714704541438129';
+const FREEE_CLIENT_SECRET = '1_w8WfDk9Ujh5bhc_7Exr_OEDFkzxOlmlL07CPYc5Znob6VxLIe8rXf_2V7BAvC1l06Wy9MfQYZvSBrmN7-ZoQ';
+const FREEE_AUTH_URL  = 'https://accounts.secure.freee.co.jp/public_api/authorize';
+const FREEE_TOKEN_URL = 'https://accounts.secure.freee.co.jp/public_api/token';
+
+// ═══════════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════════
+let dvToken      = null;
+let freeeToken   = null;
+let freeeCompanyId = null;
+let currentPeriod = 'month';
+let showPaid      = false;
+let cashFlowRows  = [];   // processed rows for display
+let openGroups    = {};   // groupKey → true/false (expanded)
+
+// ═══════════════════════════════════════════════
+// Init
+// ═══════════════════════════════════════════════
+async function init() {
+  // Localhost warning
+  if (!location.hostname.includes('github.io') && location.protocol !== 'file:') {
+    document.getElementById('localhostWarning').classList.remove('hidden');
+  } else if (location.protocol === 'file:') {
+    document.getElementById('localhostWarning').classList.remove('hidden');
+  }
+
+  // PKCE callback check
+  const params = new URLSearchParams(location.search);
+  const code  = params.get('code');
+  const state = params.get('state');
+  if (code && state) {
+    showLoading('認証処理中...');
+    try {
+      await handleDvCallback(code, state);
+    } catch(e) {
+      showAlert('mainAlert', 'err', 'COMPASS 認証エラー: ' + e.message);
+    }
+    // Clean URL
+    history.replaceState({}, '', location.pathname);
+    hideLoading();
+  }
+
+  // Restore tokens from storage
+  const savedDvToken = sessionStorage.getItem('dv_access_token');
+  if (savedDvToken) {
+    dvToken = savedDvToken;
+  }
+  const savedFreeeToken = localStorage.getItem('freee_access_token');
+  if (savedFreeeToken) {
+    freeeToken = savedFreeeToken;
+  }
+  const savedCompanyId = localStorage.getItem('freee_company_id');
+  if (savedCompanyId) {
+    freeeCompanyId = savedCompanyId;
+  }
+
+  updateAuthUI();
+
+  // If both auths ready, go to main screen
+  if (dvToken && freeeToken) {
+    await loadAllData();
+  }
+}
+
+// ═══════════════════════════════════════════════
+// PKCE helpers
+// ═══════════════════════════════════════════════
+function b64url(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+async function sha256(str) {
+  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+}
+function randomStr(len = 64) {
+  const arr = new Uint8Array(len);
+  crypto.getRandomValues(arr);
+  return b64url(arr).slice(0, len);
+}
+
+// ═══════════════════════════════════════════════
+// Dataverse Auth (PKCE)
+// ═══════════════════════════════════════════════
+async function startDvLogin() {
+  const verifier  = randomStr(64);
+  const challenge = b64url(await sha256(verifier));
+  const state     = randomStr(16);
+
+  sessionStorage.setItem('pkce_v', verifier);
+  sessionStorage.setItem('pkce_s', state);
+
+  const url = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/authorize?` +
+    new URLSearchParams({
+      client_id:             CLIENT_ID,
+      response_type:         'code',
+      redirect_uri:          REDIRECT_URI,
+      scope:                 SCOPE_DV,
+      code_challenge:        challenge,
+      code_challenge_method: 'S256',
+      state,
+      prompt: 'select_account'
+    });
+  location.href = url;
+}
+
+async function handleDvCallback(code, returnedState) {
+  const savedState   = sessionStorage.getItem('pkce_s');
+  const verifier     = sessionStorage.getItem('pkce_v');
+  if (returnedState !== savedState) throw new Error('state mismatch');
+
+  const res = await fetch(
+    `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id:     CLIENT_ID,
+        grant_type:    'authorization_code',
+        code,
+        redirect_uri:  REDIRECT_URI,
+        code_verifier: verifier,
+        scope:         SCOPE_DV
+      })
+    }
+  );
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error_description || res.statusText);
+  }
+  const data = await res.json();
+  dvToken = data.access_token;
+  sessionStorage.setItem('dv_access_token', dvToken);
+  sessionStorage.removeItem('pkce_v');
+  sessionStorage.removeItem('pkce_s');
+}
+
+// ═══════════════════════════════════════════════
+// freee Auth
+// ═══════════════════════════════════════════════
+function openFreeeAuth() {
+  const url = `${FREEE_AUTH_URL}?client_id=${FREEE_CLIENT_ID}&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&prompt=select_company`;
+  window.open(url, '_blank');
+}
+
+function genCurlCommand() {
+  const code = document.getElementById('freeeCodeInput').value.trim();
+  if (!code) { alert('認可コードを入力してください'); return; }
+  const cmd = `curl -s -X POST "${FREEE_TOKEN_URL}" \\
+  -H "Content-Type: application/x-www-form-urlencoded" \\
+  -d "grant_type=authorization_code" \\
+  -d "client_id=${FREEE_CLIENT_ID}" \\
+  -d "client_secret=${FREEE_CLIENT_SECRET}" \\
+  -d "code=${code}" \\
+  -d "redirect_uri=urn:ietf:wg:oauth:2.0:oob" \\
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['access_token'])"`;
+  document.getElementById('curlOutput').value = cmd;
+}
+
+function setFreeeToken() {
+  const token = document.getElementById('freeeTokenInput').value.trim();
+  if (!token) { alert('access_token を入力してください'); return; }
+  freeeToken = token;
+  localStorage.setItem('freee_access_token', token);
+  updateAuthUI();
+  showAlert('mainAlert', 'ok', 'freee トークンを設定しました。');
+}
+
+// ═══════════════════════════════════════════════
+// Auth UI
+// ═══════════════════════════════════════════════
+function updateAuthUI() {
+  // DV pill
+  const pillDv   = document.getElementById('pillDv');
+  const dvTxt    = document.getElementById('pillDvText');
+  const dvCard   = document.getElementById('dvStatusCard');
+  const dvStat   = document.getElementById('dvStatusText');
+  if (dvToken) {
+    pillDv.classList.add('ok');
+    dvTxt.textContent = 'COMPASS: ログイン済';
+    dvCard.classList.add('active');
+    dvStat.textContent = 'ログイン済み';
+    dvStat.className = 'auth-status ok';
+  } else {
+    pillDv.classList.remove('ok');
+    dvTxt.textContent = 'COMPASS: 未認証';
+    dvCard.classList.remove('active');
+    dvStat.textContent = '未認証';
+    dvStat.className = 'auth-status err';
+  }
+
+  // freee pill
+  const pillF   = document.getElementById('pillFreee');
+  const fTxt    = document.getElementById('pillFreeeText');
+  const fCard   = document.getElementById('freeeStatusCard');
+  const fStat   = document.getElementById('freeeStatusText');
+  if (freeeToken) {
+    pillF.classList.add('ok');
+    fTxt.textContent = 'freee: 設定済';
+    fCard.classList.add('active');
+    fStat.textContent = 'トークン設定済み';
+    fStat.className = 'auth-status ok';
+  } else {
+    pillF.classList.remove('ok');
+    fTxt.textContent = 'freee: 未設定';
+    fCard.classList.remove('active');
+    fStat.textContent = 'トークン未設定';
+    fStat.className = 'auth-status err';
+  }
+
+  // Start button
+  const startBtn = document.getElementById('startBtn');
+  if (dvToken && freeeToken) {
+    startBtn.disabled = false;
+    startBtn.textContent = '📊 データ読込・現金予定表を表示';
+  } else if (dvToken || freeeToken) {
+    startBtn.disabled = false;
+    startBtn.textContent = '📊 利用可能なデータで表示 (部分)';
+  } else {
+    startBtn.disabled = true;
+  }
+}
+
+function doLogout() {
+  if (!confirm('ログアウトしますか？（両方の認証情報がクリアされます）')) return;
+  dvToken = freeeToken = freeeCompanyId = null;
+  sessionStorage.removeItem('dv_access_token');
+  sessionStorage.removeItem('pkce_v');
+  sessionStorage.removeItem('pkce_s');
+  localStorage.removeItem('freee_access_token');
+  localStorage.removeItem('freee_company_id');
+  updateAuthUI();
+  showSetup();
+}
+
+function showSetup() {
+  document.getElementById('setupScreen').classList.remove('hidden');
+  document.getElementById('mainScreen').classList.add('hidden');
+}
+
+// ═══════════════════════════════════════════════
+// Dataverse API
+// ═══════════════════════════════════════════════
+async function dvGet(path) {
+  if (!dvToken) return null;
+  const url = `${DV_URL}/api/data/v9.2/${path}`;
+  const res = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${dvToken}`,
+      'Accept': 'application/json',
+      'OData-MaxVersion': '4.0',
+      'OData-Version': '4.0'
+    }
+  });
+  if (res.status === 401) {
+    dvToken = null;
+    sessionStorage.removeItem('dv_access_token');
+    updateAuthUI();
+    throw new Error('COMPASS トークンが期限切れです。再ログインしてください。');
+  }
+  if (!res.ok) throw new Error(`Dataverse API エラー: ${res.status}`);
+  return res.json();
+}
+
+// ═══════════════════════════════════════════════
+// freee API (with rate limit retry)
+// ═══════════════════════════════════════════════
+async function freeeGet(path, retries = 4) {
+  if (!freeeToken) return null;
+  const url = `${FREEE_API}${path}`;
+  for (let i = 0; i < retries; i++) {
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${freeeToken}`, 'Content-Type': 'application/json' }
+    });
+    if (res.status === 429) {
+      const wait = [5000, 10000, 20000, 40000][i];
+      await new Promise(r => setTimeout(r, wait));
+      continue;
+    }
+    if (res.status === 401) {
+      freeeToken = null;
+      localStorage.removeItem('freee_access_token');
+      updateAuthUI();
+      throw new Error('freee トークンが期限切れです。再設定してください。');
+    }
+    if (!res.ok) throw new Error(`freee API エラー: ${res.status}`);
+    return res.json();
+  }
+  throw new Error('freee API: レート制限に達しました');
+}
+
+// ═══════════════════════════════════════════════
+// freee: 事業所ID取得
+// ═══════════════════════════════════════════════
+async function ensureFreeeCompanyId() {
+  if (freeeCompanyId) return;
+  const data = await freeeGet('/companies');
+  if (!data) return;
+  // LEENEAR を自動選択
+  const company = (data.companies || []).find(c =>
+    c.display_name?.includes('リニア') || c.display_name?.includes('LEENEAR')
+  ) || (data.companies || [])[0];
+  if (company) {
+    freeeCompanyId = String(company.id);
+    localStorage.setItem('freee_company_id', freeeCompanyId);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// Date helpers
+// ═══════════════════════════════════════════════
+function addDays(dateStr, days) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+function toDateStr(d) {
+  if (!d) return null;
+  return new Date(d).toISOString().split('T')[0];
+}
+function fmtDate(str) {
+  if (!str) return '—';
+  const [y, m, d] = str.split('-');
+  return `${m}/${d}`;
+}
+function fmtYM(str) {
+  if (!str) return '';
+  const [y, m] = str.split('-');
+  return `${y}年${parseInt(m)}月`;
+}
+function getPeriodRange(period) {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  let start, end;
+  if (period === 'month') {
+    start = new Date(y, m, 1);
+    end   = new Date(y, m + 1, 0);
+  } else if (period === '3months') {
+    start = new Date(y, m, 1);
+    end   = new Date(y, m + 3, 0);
+  } else {
+    start = new Date(y, m, 1);
+    end   = new Date(y, m + 6, 0);
+  }
+  return { start: toDateStr(start), end: toDateStr(end) };
+}
+function parsePayDays(payDays) {
+  if (!payDays) return 30;
+  const s = String(payDays).trim().toUpperCase();
+  if (s === 'AT SIGHT' || s === 'SIGHT' || s === '0') return 0;
+  const n = parseInt(s);
+  return isNaN(n) ? 30 : n;
+}
+function getLastDayOfMonth(y, m) {
+  return new Date(y, m + 1, 0).toISOString().split('T')[0];
+}
+// 末締翌月25日 計算
+function calcPurchasePayDate(workDate) {
+  if (!workDate) return null;
+  const d = new Date(workDate);
+  return `${d.getFullYear()}-${String(d.getMonth() + 2).padStart(2,'0')}-25`;
+}
+
+function fmtJPY(n) {
+  if (n == null || isNaN(n)) return '—';
+  return '¥' + Math.round(n).toLocaleString('ja-JP');
+}
+function fmtUSD(n) {
+  if (n == null || isNaN(n)) return '—';
+  return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
+// ═══════════════════════════════════════════════
+// Fetch COMPASS Data
+// ═══════════════════════════════════════════════
+async function fetchBookings(dvStartDate, dvEndDate) {
+  // BL_ETD 기준 조회 (pay_days 최대 90일 고려해 시작일을 앞당김)
+  const lookback = addDays(dvStartDate, -120);
+  const data = await dvGet(
+    `cr49f_bookings` +
+    `?$filter=crcf9_bl_etd ge ${lookback} and crcf9_bl_etd le ${dvEndDate}` +
+    `&$select=cr49f_bookingid,cr49f_booking_no,` +
+             `crcf9_bl_etd,cr49f_etd,` +
+             `crcf9_sell_price_usd,crcf9_sell_price_yen,` +
+             `crcf9_bl_exchange_rate,crcf9_payment_date`
+  );
+  return (data?.value || []);
+}
+
+async function fetchBuyerName(bookingId) {
+  // booking → booking_detail → sale_contract → buyer
+  const det = await dvGet(
+    `cr49f_booking_details` +
+    `?$filter=_cr49f_booking_id_value eq ${bookingId}` +
+    `&$select=_cr49f_sale_contract_id_value&$top=1`
+  );
+  const scId = det?.value?.[0]?.['_cr49f_sale_contract_id_value'];
+  if (!scId) return { buyerName: '—', payCls: '', payDays: 30 };
+  const sc = await dvGet(
+    `cr49f_sale_contracts(${scId})` +
+    `?$select=cr49f_pay_cls,cr49f_pay_days,_cr49f_buyer_id_value`
+  );
+  const buyerId = sc?.['_cr49f_buyer_id_value'];
+  let buyerName = '—';
+  if (buyerId) {
+    const b = await dvGet(`cr49f_buyers(${buyerId})?$select=cr49f_name`);
+    buyerName = b?.cr49f_name || '—';
+  }
+  return {
+    buyerName,
+    payCls: sc?.cr49f_pay_cls || '',
+    payDays: parsePayDays(sc?.cr49f_pay_days)
+  };
+}
+
+async function fetchContainers(dvStartDate, dvEndDate) {
+  const lookback = addDays(dvStartDate, -60);
+  const data = await dvGet(
+    `crcf9_container_informations` +
+    `?$filter=crcf9_work_date ge ${lookback} and crcf9_work_date le ${dvEndDate}` +
+    `&$select=crcf9_container_informationid,crcf9_work_date,` +
+             `crcf9_purchase_amount,_cr49f_purchase_contract_id_value`
+  );
+  return (data?.value || []);
+}
+
+async function fetchPackerName(purchaseContractId) {
+  if (!purchaseContractId) return '—';
+  const pc = await dvGet(
+    `cr49f_purchase_contracts(${purchaseContractId})` +
+    `?$select=_cr49f_packer_id_value`
+  );
+  const packerId = pc?.['_cr49f_packer_id_value'];
+  if (!packerId) return '—';
+  const p = await dvGet(`cr49f_packers(${packerId})?$select=cr49f_name`);
+  return p?.cr49f_name || '—';
+}
+
+// ═══════════════════════════════════════════════
+// Fetch freee Data
+// ═══════════════════════════════════════════════
+async function fetchFreeeBalance() {
+  await ensureFreeeCompanyId();
+  if (!freeeCompanyId) return 0;
+  const data = await freeeGet(`/walletables?company_id=${freeeCompanyId}&with_balance=true`);
+  if (!data) return 0;
+  let total = 0;
+  for (const w of (data.walletables || [])) {
+    if (w.type === 'bank_account' || w.type === 'wallet') {
+      const bal = parseFloat(w.balance || 0);
+      total += isNaN(bal) ? 0 : bal;
+    }
+  }
+  return total;
+}
+
+async function fetchFreeeDeals(startDate, endDate) {
+  await ensureFreeeCompanyId();
+  if (!freeeCompanyId) return [];
+  // 支出 (expense) の未払い取引を取得
+  const params = new URLSearchParams({
+    company_id: freeeCompanyId,
+    start_issue_date: startDate,
+    end_issue_date: endDate,
+    type: 'expense',
+    limit: 100
+  });
+  const data = await freeeGet(`/deals?${params}`);
+  return (data?.deals || []);
+}
+
+// ═══════════════════════════════════════════════
+// Build Cash Flow Rows
+// ═══════════════════════════════════════════════
+function buildCashFlowRows(bookings, bookingDetails, containers, packerNames, freeeDeals, period) {
+  const { start, end } = getPeriodRange(period);
+  const today = new Date().toISOString().split('T')[0];
+  const rows = [];
+
+  // ── 入金行 (COMPASS Booking)
+  for (const bkg of bookings) {
+    const det = bookingDetails[bkg.cr49f_bookingid] || {};
+    const baseDate = bkg.crcf9_bl_etd || bkg.cr49f_etd;
+    if (!baseDate) continue;
+
+    let payDate, isActual = false;
+    if (bkg.crcf9_payment_date) {
+      payDate = toDateStr(bkg.crcf9_payment_date);
+      isActual = true;
+    } else {
+      payDate = addDays(baseDate, det.payDays || 30);
+    }
+    if (!payDate) continue;
+    if (payDate < start || payDate > end) continue;
+
+    let status;
+    if (isActual)            status = 'paid';
+    else if (payDate > today) status = 'plan';
+    else                     status = 'overdue';
+
+    const jpyAmt = bkg.crcf9_sell_price_yen
+      ? parseFloat(bkg.crcf9_sell_price_yen) * 1000
+      : (bkg.crcf9_sell_price_usd && bkg.crcf9_bl_exchange_rate
+          ? parseFloat(bkg.crcf9_sell_price_usd) * parseFloat(bkg.crcf9_bl_exchange_rate)
+          : null);
+    const usdAmt = bkg.crcf9_sell_price_usd ? parseFloat(bkg.crcf9_sell_price_usd) : null;
+
+    rows.push({
+      type: 'inflow',
+      date: payDate,
+      status,
+      label: `着金${isActual ? '済み' : '予定'}`,
+      detail: `${det.payCls || 'TT'} ${det.payDays || 30}日`,
+      partner: det.buyerName || '—',
+      bkgNo: bkg.cr49f_booking_no || '—',
+      usd: usdAmt,
+      jpy: jpyAmt,
+      source: 'COMPASS'
+    });
+  }
+
+  // ── 支払行 (COMPASS Containers = 仕入)
+  for (const ct of containers) {
+    const payDate = calcPurchasePayDate(ct.crcf9_work_date);
+    if (!payDate) continue;
+    if (payDate < start || payDate > end) continue;
+    const jpy = ct.crcf9_purchase_amount ? parseFloat(ct.crcf9_purchase_amount) : null;
+    const status = payDate > today ? 'plan' : 'overdue';
+    rows.push({
+      type: 'outflow',
+      date: payDate,
+      status,
+      label: '仕入支払予定',
+      detail: '末締翌月25日',
+      partner: packerNames[ct.crcf9_container_informationid] || '—',
+      bkgNo: '—',
+      usd: null,
+      jpy: jpy ? -Math.abs(jpy) : null,
+      source: 'COMPASS'
+    });
+  }
+
+  // ── 支払行 (freee deals = その他経費)
+  for (const deal of freeeDeals) {
+    const payDate = deal.payment_due_date || deal.issue_date;
+    if (!payDate) continue;
+    const d = toDateStr(payDate);
+    if (d < start || d > end) continue;
+    const status = (deal.status === 'settled') ? 'paid' : (d > today ? 'plan' : 'overdue');
+    const jpy = parseFloat(deal.amount || 0);
+    rows.push({
+      type: 'outflow',
+      date: d,
+      status,
+      label: deal.description || deal.ref_number || '経費',
+      detail: deal.details?.[0]?.account_item_name || '—',
+      partner: deal.partner_name || '—',
+      bkgNo: '—',
+      usd: null,
+      jpy: -Math.abs(jpy),
+      source: 'freee'
+    });
+  }
+
+  // Sort by date
+  rows.sort((a, b) => a.date.localeCompare(b.date));
+  return rows;
+}
+
+// ═══════════════════════════════════════════════
+// Main Load
+// ═══════════════════════════════════════════════
+async function loadAllData() {
+  showLoading('データ読込中...');
+  clearAlert('mainAlert');
+
+  try {
+    const { start, end } = getPeriodRange(currentPeriod);
+
+    // Parallel fetch
+    const [freeeBalance, freeeDeals, bookingsRaw, containersRaw] = await Promise.all([
+      freeeToken ? fetchFreeeBalance().catch(e => { console.error(e); return 0; }) : Promise.resolve(0),
+      freeeToken ? fetchFreeeDeals(start, end).catch(e => { console.error(e); return []; }) : Promise.resolve([]),
+      dvToken    ? fetchBookings(start, end).catch(e => { console.error(e); return []; }) : Promise.resolve([]),
+      dvToken    ? fetchContainers(start, end).catch(e => { console.error(e); return []; }) : Promise.resolve([])
+    ]);
+
+    // Booking details (buyer name, pay terms) — sequential to avoid throttling
+    const bookingDetails = {};
+    if (dvToken && bookingsRaw.length > 0) {
+      setLoadingText(`取引先情報取得中 (0/${bookingsRaw.length})...`);
+      for (let i = 0; i < bookingsRaw.length; i++) {
+        const bkg = bookingsRaw[i];
+        try {
+          bookingDetails[bkg.cr49f_bookingid] = await fetchBuyerName(bkg.cr49f_bookingid);
+        } catch(e) {
+          bookingDetails[bkg.cr49f_bookingid] = { buyerName: '—', payCls: 'TT', payDays: 30 };
+        }
+        if (i % 5 === 0) setLoadingText(`取引先情報取得中 (${i+1}/${bookingsRaw.length})...`);
+      }
+    }
+
+    // Packer names
+    const packerNames = {};
+    if (dvToken && containersRaw.length > 0) {
+      setLoadingText('仕入先情報取得中...');
+      for (const ct of containersRaw) {
+        const pcId = ct['_cr49f_purchase_contract_id_value'];
+        try {
+          packerNames[ct.crcf9_container_informationid] = await fetchPackerName(pcId);
+        } catch(e) {
+          packerNames[ct.crcf9_container_informationid] = '—';
+        }
+      }
+    }
+
+    // Build cash flow
+    cashFlowRows = buildCashFlowRows(bookingsRaw, bookingDetails, containersRaw, packerNames, freeeDeals, currentPeriod);
+
+    // Update summary
+    renderSummary(freeeBalance, cashFlowRows);
+
+    // Render table
+    renderTable(cashFlowRows, freeeBalance);
+
+    // Switch to main screen
+    document.getElementById('setupScreen').classList.add('hidden');
+    document.getElementById('mainScreen').classList.remove('hidden');
+
+    // Period label
+    const { start: ps, end: pe } = getPeriodRange(currentPeriod);
+    document.getElementById('periodLabel').textContent = `  ${ps} 〜 ${pe}`;
+
+    // Data quality alert
+    document.getElementById('dataQualityAlert').style.display = 'flex';
+
+    if (!dvToken || !freeeToken) {
+      showAlert('mainAlert', 'warn',
+        `部分表示: ${!dvToken ? 'COMPASS (Dataverse) 未認証のため売上・仕入データなし。' : ''}${!freeeToken ? 'freee 未設定のため口座残高・経費データなし。' : ''}`
+      );
+    }
+
+  } catch(e) {
+    showAlert('mainAlert', 'err', 'データ読込エラー: ' + e.message);
+    document.getElementById('setupScreen').classList.add('hidden');
+    document.getElementById('mainScreen').classList.remove('hidden');
+  }
+
+  hideLoading();
+}
+
+// ═══════════════════════════════════════════════
+// Render Summary
+// ═══════════════════════════════════════════════
+function renderSummary(freeeBalance, rows) {
+  // Balance
+  document.getElementById('sumBalance').textContent = fmtJPY(freeeBalance);
+
+  // Inflow (exclude paid if showPaid is off)
+  const inflowRows = rows.filter(r => r.type === 'inflow' && (showPaid || r.status !== 'paid'));
+  const inflowTotal = inflowRows.reduce((s, r) => s + (r.jpy || 0), 0);
+  document.getElementById('sumInflow').textContent = fmtJPY(inflowTotal);
+  document.getElementById('sumInflowSub').textContent = `件数: ${inflowRows.length}件`;
+
+  // Outflow
+  const outflowRows = rows.filter(r => r.type === 'outflow' && (showPaid || r.status !== 'paid'));
+  const outflowTotal = outflowRows.reduce((s, r) => s + (r.jpy || 0), 0);
+  document.getElementById('sumOutflow').textContent = fmtJPY(Math.abs(outflowTotal));
+  document.getElementById('sumOutflowSub').textContent = `件数: ${outflowRows.length}件`;
+
+  // Final
+  const final = freeeBalance + inflowTotal + outflowTotal;
+  const el = document.getElementById('sumFinal');
+  el.textContent = fmtJPY(final);
+  el.className = 'value ' + (final >= 0 ? 'val-ok' : 'val-err');
+}
+
+// ═══════════════════════════════════════════════
+// Render Table
+// ═══════════════════════════════════════════════
+function renderTable(rows, freeeBalance) {
+  const tbody = document.getElementById('cfTableBody');
+  if (rows.length === 0 && !freeeBalance) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📭</div><p>表示するデータがありません</p></div></td></tr>`;
+    return;
+  }
+
+  const { start } = getPeriodRange(currentPeriod);
+  const today = new Date().toISOString().split('T')[0];
+
+  // Filter paid if needed
+  const displayRows = showPaid ? rows : rows.filter(r => r.status !== 'paid');
+
+  // Group by date
+  const groups = {};
+  for (const r of displayRows) {
+    const key = r.date;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(r);
+  }
+
+  let html = '';
+  let runningBalance = freeeBalance || 0;
+
+  // Opening row
+  html += `<tr class="row-opening">
+    <td>${fmtDate(start)}</td>
+    <td></td>
+    <td>📦 期首残高</td>
+    <td class="text-muted">freee 口座合計</td>
+    <td class="right">—</td>
+    <td class="right font-mono">${fmtJPY(runningBalance)}</td>
+    <td class="right font-mono amt-bal">${fmtJPY(runningBalance)}</td>
+  </tr>`;
+
+  const sortedDates = Object.keys(groups).sort();
+  for (const dateKey of sortedDates) {
+    const dateRows = groups[dateKey];
+    const gKey = `g_${dateKey.replace(/-/g, '')}`;
+    const isOpen = openGroups[gKey] !== false; // default open
+
+    // Date group totals
+    const dayJPY = dateRows.reduce((s, r) => s + (r.jpy || 0), 0);
+    runningBalance += dayJPY;
+
+    const dayLabel = dateRows.length > 1
+      ? `${dateRows.length}件`
+      : (dateRows[0].type === 'inflow' ? '着金' : '支払');
+
+    // Overdue indicator
+    const hasOverdue = dateRows.some(r => r.status === 'overdue');
+    const dateDisplay = fmtDate(dateKey) + (dateKey <= today && dateRows.some(r => r.type==='inflow' && r.status !== 'paid') ? ' ⚠️' : '');
+
+    const balClass = runningBalance < 0 ? 'amt-bal neg' : 'amt-bal';
+    const dayJPYClass = dayJPY >= 0 ? 'amt-plus' : 'amt-minus';
+
+    html += `<tr class="row-group-header" onclick="toggleGroup('${gKey}')">
+      <td><span class="chevron ${isOpen ? 'open' : ''}" id="chev_${gKey}">▶</span>${dateDisplay}</td>
+      <td></td>
+      <td class="text-muted text-small">${dayLabel}</td>
+      <td></td>
+      <td class="right"></td>
+      <td class="right font-mono ${dayJPYClass}">${dayJPY >= 0 ? '+' : ''}${fmtJPY(dayJPY)}</td>
+      <td class="right font-mono ${balClass}">${fmtJPY(runningBalance)}</td>
+    </tr>`;
+
+    for (const r of dateRows) {
+      const usdCell  = r.usd ? fmtUSD(r.usd) : '—';
+      const jpyCell  = r.jpy ? fmtJPY(Math.abs(r.jpy)) : '—';
+      const jpyClass = r.type === 'inflow' ? 'amt-plus' : 'amt-minus';
+      const jpySign  = r.type === 'inflow' ? '+' : '-';
+
+      let badgeHtml = '';
+      if (r.status === 'paid')    badgeHtml = `<span class="badge badge-paid">✅ 入金済</span>`;
+      else if (r.status === 'plan') {
+        if (r.type === 'inflow') badgeHtml = `<span class="badge badge-plan">🔵 予定</span>`;
+        else                     badgeHtml = `<span class="badge badge-expense">🟡 支払予定</span>`;
+      }
+      else if (r.status === 'overdue') {
+        if (r.type === 'inflow') badgeHtml = `<span class="badge badge-overdue">🔴 未入金</span>`;
+        else                     badgeHtml = `<span class="badge badge-overdue">🔴 支払遅延</span>`;
+      }
+
+      const srcBadge = r.source === 'freee'
+        ? `<span class="badge badge-freee" style="margin-left:4px; font-size:10px">freee</span>`
+        : '';
+
+      html += `<tr class="row-detail ${isOpen ? '' : 'hidden'}" data-group="${gKey}">
+        <td class="text-muted text-small">${r.bkgNo !== '—' ? r.bkgNo : fmtDate(dateKey)}</td>
+        <td>${badgeHtml}</td>
+        <td>${r.label}${srcBadge}<br><span class="text-muted text-small">${r.detail}</span></td>
+        <td class="text-small">${r.partner}</td>
+        <td class="right font-mono text-small">${usdCell}</td>
+        <td class="right font-mono ${jpyClass}">${jpySign}${jpyCell}</td>
+        <td class="right text-muted text-small">—</td>
+      </tr>`;
+    }
+  }
+
+  // Closing row
+  const { end } = getPeriodRange(currentPeriod);
+  const balClass = runningBalance < 0 ? 'amt-bal neg' : 'amt-bal val-ok';
+  html += `<tr class="row-closing">
+    <td>${fmtDate(end)}</td>
+    <td></td>
+    <td>📊 月末予想残高</td>
+    <td class="text-muted">期首残高 ＋ 入金 ± 支払</td>
+    <td class="right">—</td>
+    <td class="right font-mono">—</td>
+    <td class="right font-mono ${balClass}">${fmtJPY(runningBalance)}</td>
+  </tr>`;
+
+  tbody.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════
+// UI Controls
+// ═══════════════════════════════════════════════
+function toggleGroup(gKey) {
+  openGroups[gKey] = !( openGroups[gKey] !== false );
+  const rows = document.querySelectorAll(`[data-group="${gKey}"]`);
+  rows.forEach(r => r.classList.toggle('hidden', !openGroups[gKey]));
+  const chev = document.getElementById(`chev_${gKey}`);
+  if (chev) chev.classList.toggle('open', !!openGroups[gKey]);
+}
+
+function changePeriod(p) {
+  currentPeriod = p;
+  document.querySelectorAll('.period-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.p === p);
+  });
+  if (cashFlowRows.length > 0) {
+    renderSummary(0, cashFlowRows);
+    renderTable(cashFlowRows, 0);
+  }
+}
+
+function togglePaid() {
+  showPaid = !showPaid;
+  const tog = document.getElementById('paidToggle');
+  const lbl = document.getElementById('paidLabel');
+  tog.classList.toggle('on', showPaid);
+  lbl.textContent = showPaid ? '入金済み 表示中' : '入金済み 非表示';
+  if (cashFlowRows.length > 0) {
+    renderSummary(0, cashFlowRows);
+    renderTable(cashFlowRows, 0);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// Alert / Loading helpers
+// ═══════════════════════════════════════════════
+function showAlert(containerId, type, msg) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const cls = { ok: 'alert-ok', warn: 'alert-warn', err: 'alert-err', info: 'alert-info' }[type] || 'alert-info';
+  el.innerHTML = `<div class="alert ${cls}">${msg}</div>`;
+}
+function clearAlert(containerId) {
+  const el = document.getElementById(containerId);
+  if (el) el.innerHTML = '';
+}
+function showLoading(msg = 'ロード中...') {
+  document.getElementById('loadingText').textContent = msg;
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+}
+function setLoadingText(msg) {
+  document.getElementById('loadingText').textContent = msg;
+}
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.add('hidden');
+}
+
+// ═══════════════════════════════════════════════
+// Boot
+// ═══════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
